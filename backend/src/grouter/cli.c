@@ -26,6 +26,7 @@
 #include "filter.h"
 #include "classspec.h"
 #include "packetcore.h"
+#include "udpTools.h"
 #include <slack/err.h>
 #include <slack/std.h>
 #include <slack/prog.h>
@@ -91,6 +92,8 @@ int CLIInit(router_config *rarg)
 	registerCLI("spolicy", spolicyCmd, SHELP_SPOLICY, USAGE_SPOLICY, LHELP_SPOLICY); // Check
 	registerCLI("class", classCmd, SHELP_CLASS, USAGE_CLASS, LHELP_CLASS);
 	registerCLI("filter", filterCmd, SHELP_FILTER, USAGE_FILTER, LHELP_FILTER);
+	registerCLI("udpserver", udpServerCmd, SHELP_UDPSERVER, USAGE_UDPSERVER, LHELP_UDPSERVER);
+	registerCLI("udpsend", udpSendCmd, SHELP_UDPSEND, USAGE_UDPSEND, LHELP_UDPSEND);
 
 
 	if (rarg->config_dir != NULL)
@@ -793,7 +796,71 @@ void filterCmd()
 	}
 }
 
+void udpServerCmd() {
+	char * next_tok = strtok(NULL, " \n");
+	if (next_tok == NULL) {
+		printf("Need at least one argument (port number).\n");
+		return;
+	}
+	int portNumber = gAtoi(next_tok);
+	if(portNumber <= 0 || portNumber > USHRT_MAX) {
+		printf("Invalid port number: %d.\n", portNumber);
+		return;
+	}
+	startUDPServer((uint16_t) portNumber);
+	// Rebind the signals back to the CLI ones
+	redefineSignalHandler(SIGINT, dummyFunction);
+	redefineSignalHandler(SIGQUIT, dummyFunction);
+	redefineSignalHandler(SIGTSTP, dummyFunction);
+}
 
+void udpSendCmd() {
+	char * next_tok = strtok(NULL, " \n");
+	if (next_tok == NULL) {
+		printf("Error: Invalid argument count.\n");
+		return;
+	}
+	int sourcePortNumber = gAtoi(next_tok);
+	if(sourcePortNumber <= 0 || sourcePortNumber > USHRT_MAX) {
+		printf("Error: Invalid source port number: %d.\n", sourcePortNumber);
+		return;
+	}
+	next_tok = strtok(NULL, " \n");
+	if (next_tok == NULL) {
+		printf("Error: Invalid argument count.\n");
+		return;
+	}
+	uchar * destination = (uchar *) malloc(4);
+	if(Dot2IP(next_tok, destination) != EXIT_SUCCESS) {
+		printf("Error: Invalid IP: %s.\n", next_tok);
+		return;
+	}
+	next_tok = strtok(NULL, " \n");
+	if (next_tok == NULL) {
+		printf("Error: Invalid argument count.\n");
+		return;
+	}
+	int destinationPortNumber = gAtoi(next_tok);
+	if(destinationPortNumber <= 0 || destinationPortNumber > USHRT_MAX) {
+		printf("Error: Invalid source port number: %d.\n", destinationPortNumber);
+		return;
+	}
+	char * contents = strtok(NULL, " \n");
+	if (contents == NULL) {
+		printf("Error: Invalid argument count.\n");
+		return;
+	}
+	int len = strlen(contents);
+	if(!len) {
+		printf("Error: Empty content string.\n");
+		return;
+	}
+	char * withLineBreak = (char *) malloc(len + 2);
+	memcpy(withLineBreak, contents, len);
+	withLineBreak[len] = '\n';
+	withLineBreak[len + 1] = '\0';
+	sendUDPPacket(sourcePortNumber, destination, destinationPortNumber, withLineBreak);
+}
 
 /*
  * prints the version number of the gRouter.

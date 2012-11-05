@@ -8,6 +8,7 @@
 #include "protocols.h"
 #include "ip.h"
 #include "arp.h"
+#include "udp.h"
 
 
 gpacket_t *duplicatePacket(gpacket_t *inpkt)
@@ -77,8 +78,10 @@ void printGPktPayload(gpacket_t *msg, int level)
 			break;
 		case UDP_PROTOCOL:
 			printUDPPacket(msg);
+			break;
 		case TCP_PROTOCOL:
 			printTCPPacket(msg);
+			break;
 		}
 		break;
 	case ARP_PROTOCOL:
@@ -183,16 +186,30 @@ void printICMPPacket(gpacket_t *msg)
 	printf("\n ICMP PACKET display NOT YET IMPLEMENTED !! \n");
 }
 
-
 void printUDPPacket(gpacket_t *msg)
 {
-
-	printf("\n UDP PACKET display NOT YET IMPLEMENTED !! \n");
+	udp_packet_t * packet;
+	parseUDPPacket(msg, &packet);
+	printParsedUDPPacket(packet);
+	freeUDPPacket(packet);
 }
 
+void prettyPrint(char * data, int length) {
+	int i;
+	for(i = 0; i < length; i++) {
+		if(data[i] == '\0') {
+			printf("\\0");
+		} else if(data[i] == '\r') {
+			printf("\\r");
+		} else if(data[i] == '\n') {
+			printf("\\n\n");
+		} else {
+			printf("%c", data[i]);
+		}
+	}
+}
 
 void printTCPPacket(gpacket_t *msg)
 {
-
 	printf("\n TCP PACKET display NOT YET IMPLEMENTED !! \n");
 }

@@ -13,6 +13,7 @@
 #include "ip.h"
 #include "fragment.h"
 #include "packetcore.h"
+#include "udp.h"
 #include <stdlib.h>
 #include <slack/err.h>
 #include <netinet/in.h>
@@ -27,6 +28,11 @@ void IPInit()
 {
 	RouteTableInit(route_tbl);
 	MTUTableInit(MTU_tbl);
+	UDPInit();
+}
+
+void IPDeinit() {
+	UDPDeinit();
 }
 
 
@@ -304,10 +310,8 @@ int IPProcessMyPacket(gpacket_t *in_pkt)
 	{
 		// Is packet ICMP? send it to the ICMP module
 		// further processing with appropriate type code
-
 		if (ip_pkt->ip_prot == ICMP_PROTOCOL)
 			ICMPProcessPacket(in_pkt);
-		return EXIT_SUCCESS;
 
 		// Is packet UDP/TCP (only UDP implemented now)
 		// May be we can deal with other connectionless protocols as well.
@@ -318,40 +322,14 @@ int IPProcessMyPacket(gpacket_t *in_pkt)
 	return EXIT_FAILURE;
 }
 
-
-/*
- * TODO: implement UDP processing routines..
- * this is necessary for implementing some routing protocols.
- */
-int UDPProcess(gpacket_t *in_pkt)
-{
-	verbose(2, "[UDPProcess]:: packet received for processing.. NOT YET IMPLEMENTED!! ");
-	return EXIT_SUCCESS;
-}
-
-
-/*
- * this function processes the IP packets that are reinjected into the
- * IP layer by ICMP, UDP, and other higher-layers.
- * There can be two scenarios. The packet can be a reply for an original
- * query OR it can be a new one. The processing performed by this function depends
- * on the packet type..
- * IMPORTANT: src_prot is the source protocol number.
- */
-int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot)
-{
-        ip_packet_t *ip_pkt = (ip_packet_t *)pkt->data.data;
-	ushort cksum;
+int IPPreparePacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot) {
+	ip_packet_t *ip_pkt = (ip_packet_t *)pkt->data.data;
 	char tmpbuf[MAX_TMPBUF_LEN];
 	uchar iface_ip_addr[4];
 	int status;
-
-
 	ip_pkt->ip_ttl = 64;                        // set TTL to default value
 	ip_pkt->ip_cksum = 0;                       // reset the checksum field
 	ip_pkt->ip_prot = src_prot;  // set the protocol field
-
-
 	if (newflag == 0)
 	{
 		COPY_IP(ip_pkt->ip_dst, ip_pkt->ip_src); 		    // set dst to original src
@@ -362,7 +340,6 @@ int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int s
 		if (findRouteEntry(route_tbl, gNtohl(tmpbuf, ip_pkt->ip_dst),
 				   pkt->frame.nxth_ip_addr, &(pkt->frame.dst_interface)) == EXIT_FAILURE)
 				   return EXIT_FAILURE;
-
 	} else if (newflag == 1)
 	{
 		// non REPLY PACKET -- this is a new packet; set all fields
@@ -383,7 +360,6 @@ int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int s
 		if (findRouteEntry(route_tbl, gNtohl(tmpbuf, ip_pkt->ip_dst),
 				   pkt->frame.nxth_ip_addr, &(pkt->frame.dst_interface)) == EXIT_FAILURE)
 				   return EXIT_FAILURE;
-
 		verbose(2, "[IPOutgoingPacket]:: lookup MTU of nexthop");
 		// lookup the IP address of the destination interface..
 		if ((status = findInterfaceIP(MTU_tbl, pkt->frame.dst_interface,
@@ -391,21 +367,42 @@ int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int s
 					      return EXIT_FAILURE;
 		// the outgoing packet should have the interface IP as source
 		COPY_IP(ip_pkt->ip_src, gHtonl(tmpbuf, iface_ip_addr));
-		verbose(2, "[IPOutgoingPacket]:: almost one processing the IP header.");
+		verbose(2, "[IPOutgoingPacket]:: almost done processing the IP header.");
 	} else
 	{
 		error("[IPOutgoingPacket]:: unknown outgoing packet action.. packet discarded ");
 		return EXIT_FAILURE;
 	}
+	return EXIT_SUCCESS;
+}
 
-	//	compute the new checksum
+int IPOutgoingPacketChecksumAndSend(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot) {
+	ip_packet_t *ip_pkt = (ip_packet_t *)pkt->data.data;
+	ushort cksum;
+	// compute the new checksum
 	cksum = checksum((uchar *)ip_pkt, ip_pkt->ip_hdr_len*2);
 	ip_pkt->ip_cksum = htons(cksum);
 	pkt->data.header.prot = htons(IP_PROTOCOL);
-
 	IPSend2Output(pkt);
 	verbose(2, "[IPOutgoingPacket]:: IP packet sent to output queue.. ");
 	return EXIT_SUCCESS;
+}
+
+/*
+ * this function processes the IP packets that are reinjected into the
+ * IP layer by ICMP, UDP, and other higher-layers.
+ * There can be two scenarios. The packet can be a reply for an original
+ * query OR it can be a new one. The processing performed by this function depends
+ * on the packet type..
+ * IMPORTANT: src_prot is the source protocol number.
+ */
+int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot)
+{
+	int result = IPPreparePacket(pkt, dst_ip, size, newflag, src_prot);
+	if(result != EXIT_SUCCESS) {
+		return result;
+	}
+	return IPOutgoingPacketChecksumAndSend(pkt, dst_ip, size, newflag, src_prot);
 }
 
 
@@ -460,7 +457,7 @@ int IPVerifyPacket(ip_packet_t *ip_pkt)
 		       IP2Dot(tmpbuf, gNtohl((tmpbuf + 20), ip_pkt->ip_src)));
 		return EXIT_FAILURE;
 	}
-
+	verbose(2, "[IPVerifyPacket]:: packet from %s passed checks.", IP2Dot(tmpbuf, gNtohl((tmpbuf+20), ip_pkt->ip_src)));
 	return EXIT_SUCCESS;
 }
 

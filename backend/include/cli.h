@@ -72,7 +72,8 @@ void qdiscCmd();
 void spolicyCmd();
 void classCmd();
 void filterCmd();
-
+void udpServerCmd();
+void udpSendCmd();
 
 
 #endif

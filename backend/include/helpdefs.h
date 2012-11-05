@@ -20,6 +20,8 @@
 #define USAGE_SPOLICY		"spolicy action [action specific options]"
 #define USAGE_CLASS		    "class cname [-src ip_spec [<min_port--max_port>]] [-dst ip_spec [<min_port--max_port>]] [-prot num] [-tos tos_spec]"
 #define USAGE_FILTER     	"filter action [action specific options]"
+#define USAGE_UDPSERVER     	"udpserver portnumber"
+#define USAGE_UDPSEND     	"udpsend sourcePort destination destinationPort data"
 
 
 #define SHELP_HELP          "display help information on given command"
@@ -39,6 +41,8 @@
 #define SHELP_SPOLICY		"set the inter queue scheduler"
 #define SHELP_CLASS		    "create add, del, and view classifier information"
 #define SHELP_FILTER		"create add, del, and view filtering rules; this uses class rules to group packets"
+#define SHELP_UDPSERVER		"Creates a UDP server on the specified port"
+#define SHELP_UDPSEND		"Sends a UDP packet to the specified machine"
 
 
 /*
@@ -76,5 +80,7 @@ absolute path (e.g., /sbin/ifconfig). \n"
 #define LHELP_SPOLICY		"spolicy.hlp"
 #define LHELP_CLASS			"class.hlp"
 #define LHELP_FILTER		"filter.hlp"
+#define LHELP_UDPSERVER		"udpserver.hlp"
+#define LHELP_UDPSEND		"udpsend.hlp"
 
 #endif

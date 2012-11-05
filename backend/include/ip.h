@@ -59,6 +59,7 @@ typedef struct _ip_packet_t
 // function prototypes...
 
 void IPInit();
+void IPDeinit();
 void IPIncomingPacket(gpacket_t *in_pkt);
 int IPCheckPacket4Me(gpacket_t *in_pkt);
 int IPProcessBcastPacket(gpacket_t *in_pkt);
@@ -68,7 +69,9 @@ int IPCheck4Fragmentation(gpacket_t *in_pkt);
 int IPCheck4Redirection(gpacket_t *in_pkt);
 int IPProcessMyPacket(gpacket_t *in_pkt);
 int UDPProcess(gpacket_t *in_pkt);
+int IPPreparePacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot);
 int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot);
+int IPOutgoingPacketChecksumSend(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int src_prot);
 int send2Output(gpacket_t *pkt);
 int IPVerifyPacket(ip_packet_t *ip_pkt);
 int isInSameNetwork(uchar *ip_addr1, uchar *ip_addr2);
