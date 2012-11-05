@@ -1,12 +1,5 @@
 #include "igmp.h"
 
-
-
-
-
-
-
-
 // state information on outstanding ping..
 //pingstat_t pstat;
 
