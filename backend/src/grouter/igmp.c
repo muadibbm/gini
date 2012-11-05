@@ -19,12 +19,12 @@ void IGMP_RCV(gpacket_t *in_pkt) {
 	switch (igmphdr->type)
 	{
 		case IGMP_HOST_MEMBERSHIP_QUERY:
-			verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership query request");
+			verbose(1, "[IGMPProcessPacket]:: IGMP processing for membership query request");
 			//IGMPProcessMembershipQuery(in_pkt);
 			break;
 
 		case IGMP_HOST_MEMBERSHIP_REPORT:
-			verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership report request");
+			verbose(1, "[IGMPProcessPacket]:: IGMP processing for membership report request");
 			//IGMPProcessMembershipReport(in_pkt);
 			break;
 	}
