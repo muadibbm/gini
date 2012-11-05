@@ -47,7 +47,7 @@ void IPIncomingPacket(gpacket_t *in_pkt)
 {
 	char tmpbuf[MAX_TMPBUF_LEN];
 	// get a pointer to the IP packet
-        ip_packet_t *ip_pkt = (ip_packet_t *)&in_pkt->data.data;
+    ip_packet_t *ip_pkt = (ip_packet_t *)&in_pkt->data.data;
 	uchar bcast_ip[] = IP_BCAST_ADDR;
 
 	// Is this IP packet for me??
@@ -312,6 +312,11 @@ int IPProcessMyPacket(gpacket_t *in_pkt)
 		// further processing with appropriate type code
 		if (ip_pkt->ip_prot == ICMP_PROTOCOL)
 			ICMPProcessPacket(in_pkt);
+			
+		// Is packet IGMP? send it to the IGMP module
+		// further processing with appropriate type code
+		if (ip_pkt->ip_prot == IGMP_PROTOCOL)
+			IGMP_RCV(in_pkt);
 
 		// Is packet UDP/TCP (only UDP implemented now)
 		// May be we can deal with other connectionless protocols as well.
@@ -404,8 +409,6 @@ int IPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int s
 	}
 	return IPOutgoingPacketChecksumAndSend(pkt, dst_ip, size, newflag, src_prot);
 }
-
-
 
 /*
  * IPSend2Output - write to the output Queue..

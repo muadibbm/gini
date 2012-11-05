@@ -33,7 +33,8 @@ grouter_src = Split ("""grouter.c
                         wfq.c
                         filter.c
 			udp.c 
-			udpTools.c""")
+			udpTools.c
+			igmp.c""")
 
 # some of the following library dependencies can be removed?
 # may be the termcap is not needed anymore..?
