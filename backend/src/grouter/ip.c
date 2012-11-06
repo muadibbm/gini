@@ -61,8 +61,14 @@ void IPIncomingPacket(gpacket_t *in_pkt)
 		verbose(2, "[IPIncomingPacket]:: not repeat broadcast (final destination %s), packet thrown",
 		       IP2Dot(tmpbuf, gNtohl((tmpbuf+20), ip_pkt->ip_dst)));
 		IPProcessBcastPacket(in_pkt);
-	} else
-	{
+	} else if (ip_pkt->ip_prot == IGMP_PROTOCOL){
+
+		// Is packet IGMP? send it to the IGMP module
+		// further processing with appropriate type code
+		IGMP_RCV(in_pkt);
+
+	}
+	else{
 		// Destinated to someone else
 		verbose(2, "[IPIncomingPacket]:: got IP packet destined to someone else");
 		IPProcessForwardingPacket(in_pkt);
@@ -85,6 +91,7 @@ int IPCheckPacket4Me(gpacket_t *in_pkt)
 	uchar pkt_ip[4];
 
 	COPY_IP(pkt_ip, gNtohl(tmpbuf, ip_pkt->ip_dst));
+	verbose(1, "TEST GUY:2.1 %s", IP2Dot(tmpbuf, pkt_ip));;
 	verbose(2, "[IPCheckPacket4Me]:: looking for IP %s ", IP2Dot(tmpbuf, pkt_ip));
 	if ((count = findAllInterfaceIPs(MTU_tbl, iface_ip)) > 0)
 	{
@@ -92,6 +99,7 @@ int IPCheckPacket4Me(gpacket_t *in_pkt)
 		{
 			if (COMPARE_IP(iface_ip[i], pkt_ip) == 0)
 			{
+				verbose(1, "TEST GUY:2.2 %s", IP2Dot(tmpbuf, pkt_ip));;
 				verbose(2, "[IPCheckPacket4Me]:: found a matching IP.. for %s ", IP2Dot(tmpbuf, pkt_ip));
 				return TRUE;
 			}
@@ -312,12 +320,6 @@ int IPProcessMyPacket(gpacket_t *in_pkt)
 		// further processing with appropriate type code
 		if (ip_pkt->ip_prot == ICMP_PROTOCOL)
 			ICMPProcessPacket(in_pkt);
-			
-		// Is packet IGMP? send it to the IGMP module
-		// further processing with appropriate type code
-		if (ip_pkt->ip_prot == IGMP_PROTOCOL)
-			IGMP_RCV(in_pkt);
-
 		// Is packet UDP/TCP (only UDP implemented now)
 		// May be we can deal with other connectionless protocols as well.
 		if (ip_pkt->ip_prot == UDP_PROTOCOL)
