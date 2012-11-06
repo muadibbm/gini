@@ -109,6 +109,7 @@ void* fromEthernetDev(void *arg)
 			(COMPARE_MAC(in_pkt->data.header.dst, bcast_mac) != 0) &&
 			(COMPARE_IGMP_MAC(in_pkt->data.header.dst, igmp_bcast_mac) != 0))
 		{
+			verbose(1, "[fromEthernetDev]:: Packet dropped .. not for this router!? ");
 			free(in_pkt);
 			continue;
 		}
