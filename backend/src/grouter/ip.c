@@ -21,6 +21,7 @@
 
 route_entry_t route_tbl[MAX_ROUTES];       	// routing table
 mtu_entry_t MTU_tbl[MAX_MTU];		        // MTU table
+uchar igmp_bcast_mac[] = MAC_IGMP_BCAST_ADDR;
 
 extern pktcore_t *pcore;
 
@@ -35,7 +36,6 @@ void IPDeinit() {
 	UDPDeinit();
 }
 
-
 /*
  * IPIncomingPacket: Process incoming IP packet.
  * The IP packet can be destined to the local router (for example route updates).
@@ -49,37 +49,31 @@ void IPIncomingPacket(gpacket_t *in_pkt)
 	// get a pointer to the IP packet
     ip_packet_t *ip_pkt = (ip_packet_t *)&in_pkt->data.data;
 	uchar bcast_ip[] = IP_BCAST_ADDR;
-	verbose(1, "GUY TEST: 3.0");
+	int mcast_ip = IP_MCAST_ADDR;
 
 	// Is this IP packet for me??
 	if (IPCheckPacket4Me(in_pkt))
 	{
-		verbose(1, "GUY TEST: 3.1");
 		verbose(2, "[IPIncomingPacket]:: got IP packet destined to this router");
 		IPProcessMyPacket(in_pkt);
 	} else if (COMPARE_IP(gNtohl(tmpbuf, ip_pkt->ip_dst), bcast_ip) == 0)
 	{
-		verbose(1, "GUY TEST: 3.2");
 		// TODO: rudimentary 'broadcast IP address' check
 		verbose(2, "[IPIncomingPacket]:: not repeat broadcast (final destination %s), packet thrown",
 		       IP2Dot(tmpbuf, gNtohl((tmpbuf+20), ip_pkt->ip_dst)));
 		IPProcessBcastPacket(in_pkt);
-	} else if (ip_pkt->ip_prot == IGMP_PROTOCOL){
-
-		verbose(1, "GUY TEST: 3.3");
-		// Is packet IGMP? send it to the IGMP module
-		// further processing with appropriate type code
-		IGMP_RCV(in_pkt);
-
-	}
-	else{
+	}else if (ip_pkt->ip_prot == IGMP_PROTOCOL){
+			// Is packet IGMP? send it to the IGMP module
+			// further processing with appropriate type code
+			IGMP_RCV(in_pkt);
+	} else if (((((int)ip_pkt->ip_dst[0])>>4) << 4)  ==  mcast_ip){
+		//If the IP starts with 1110 we have a multicast IP. NOTE: this must be after IGMP check since they have the same IP range.
+		IPProcessMcastPacket(in_pkt);
+	}	else{
 		// Destinated to someone else
-		verbose(1, "GUY TEST: 3.4");
 		verbose(2, "[IPIncomingPacket]:: got IP packet destined to someone else");
 		IPProcessForwardingPacket(in_pkt);
 	}
-	verbose(1, "GUY TEST: 3.5");
-
 }
 
 
@@ -98,7 +92,6 @@ int IPCheckPacket4Me(gpacket_t *in_pkt)
 	uchar pkt_ip[4];
 
 	COPY_IP(pkt_ip, gNtohl(tmpbuf, ip_pkt->ip_dst));
-	verbose(1, "TEST GUY:2.1 %s", IP2Dot(tmpbuf, pkt_ip));;
 	verbose(2, "[IPCheckPacket4Me]:: looking for IP %s ", IP2Dot(tmpbuf, pkt_ip));
 	if ((count = findAllInterfaceIPs(MTU_tbl, iface_ip)) > 0)
 	{
@@ -106,7 +99,6 @@ int IPCheckPacket4Me(gpacket_t *in_pkt)
 		{
 			if (COMPARE_IP(iface_ip[i], pkt_ip) == 0)
 			{
-				verbose(1, "TEST GUY:2.2 %s", IP2Dot(tmpbuf, pkt_ip));;
 				verbose(2, "[IPCheckPacket4Me]:: found a matching IP.. for %s ", IP2Dot(tmpbuf, pkt_ip));
 				return TRUE;
 			}
@@ -117,7 +109,57 @@ int IPCheckPacket4Me(gpacket_t *in_pkt)
 }
 
 
+int IPProcessMcastPacket(gpacket_t *in_pkt)
+{
+	gpacket_t *pkt_frags[MAX_FRAGMENTS];
+	ip_packet_t *ip_pkt = (ip_packet_t *)in_pkt->data.data;
+	int num_frags, i, need_frag;
+	char tmpbuf[MAX_TMPBUF_LEN];
 
+	// Checks to make sure we arent in the range 224.0.0.0 and 224.0.0.255
+	// This is a reserved range.
+	if (ip_pkt->ip_dst[0] == 224 && ip_pkt->ip_dst[1] == 0 && ip_pkt->ip_dst[2] == 0)
+	{
+		verbose(2, "[IPProcessMcastPacket]  Can't send to a reserved space.");
+		return EXIT_FAILURE;
+
+	}
+
+//	TODO: checkMultiCastPacket for errors etc;
+
+
+	// Send a packet to each host in the group
+	List *host_list = IGMP_GetGroupIPs(in_pkt);
+	if (host_list != NULL)
+	{
+		// Do we have the packet.
+		while (list_has_next(host_list)) {
+			gpacket_t *nextHostItem = (gpacket_t *) list_next(host_list);
+
+			gpacket_t *in_pkt_copy = (gpacket_t *) malloc(sizeof(gpacket_t ));
+			memcpy(in_pkt_copy, in_pkt, sizeof(*in_pkt));
+
+			ip_packet_t *ip_pkt_copy = (ip_packet_t *)in_pkt_copy->data.data;
+			ip_packet_t *nextHost_ip_pkt = (ip_packet_t *)nextHostItem->data.data;
+
+			memcpy(in_pkt_copy->data.header.dst, nextHostItem->data.header.src, sizeof(nextHostItem->data.header.src));
+			memcpy(ip_pkt_copy->ip_dst, nextHost_ip_pkt->ip_src, sizeof(nextHost_ip_pkt->ip_src));
+
+			// TODO: figure out this checksum.
+//			ip_pkt_copy.ip_cksum = 0;
+	//		ip_pkt_copy.ip_cksum = htons(checksum((uchar *)ip_pkt, ip_pkt_copy->ip_hdr_len *2));
+
+			// Forward this modified packet, it acts similar to a normal packet.
+			ProcessForwardingMulticastPacket(in_pkt_copy);
+		}
+	}
+	else
+	{
+		verbose(2, "[IPProcessMcastPacket]: We don't have anyone in that group");
+	}
+
+	return EXIT_SUCCESS;
+}
 /*
  * TODO: broadcast not yet implemented.. should be simple to implement.
  * read RFC 1812 and 922 ...
@@ -127,7 +169,91 @@ int IPProcessBcastPacket(gpacket_t *in_pkt)
 	return EXIT_SUCCESS;
 }
 
+/*
+ * Sends an IP packet destined to someone in a group.
+ * This is based on the Normal ProcessForwardingPacket.
+ * It is specifcially implemented for the in-complete Multicast packet.
+ * It adds checksum and interface information etc....
+ */
 
+int ProcessForwardingMulticastPacket(gpacket_t *in_pkt)
+{
+
+	gpacket_t *pkt_frags[MAX_FRAGMENTS];
+	ip_packet_t *ip_pkt = (ip_packet_t *)in_pkt->data.data;
+	int num_frags, i, need_frag;
+	char tmpbuf[MAX_TMPBUF_LEN];
+
+	// TODO: make the checksums work so that this IPCheck is called. It could be useful.
+/*
+	if (IPCheck4Errors(in_pkt) == EXIT_FAILURE)
+	{
+		verbose(1, "GUY TEST: 5.2  IPCheck4Errors failed");
+		return EXIT_FAILURE;
+	}
+*/
+
+	// find the route... if it does not exist, should we send a
+	// ICMP network/host unreachable message -- CHECK??
+	if (findRouteEntry(route_tbl, gNtohl(tmpbuf, ip_pkt->ip_dst),
+			   in_pkt->frame.nxth_ip_addr,
+			   &(in_pkt->frame.dst_interface)) == EXIT_FAILURE)
+	{
+		return EXIT_FAILURE;
+	}
+
+	// check for redirection?? -- the output interface is already found
+	// by the previous command.. if needed the following routine sends the
+	// redirects but the packet is sent to destination..
+	// TODO: Check the RFC for conformance??
+	IPCheck4Redirection(in_pkt);
+
+	// check for fragmentation -- this should return three conditions:
+	// FRAGS_NONE, FRAGS_ERROR, MORE_FRAGS
+	need_frag = IPCheck4Fragmentation(in_pkt);
+
+	switch (need_frag)
+	{
+	case FRAGS_NONE:
+		verbose(2, "[IPProcessForwardingPacket]:: sending packet to GNET..");
+		// compute the checksum before sending out.. the fragmentation routine does this inside it.
+		ip_pkt->ip_cksum = 0;
+		ip_pkt->ip_cksum = htons(checksum((uchar *)ip_pkt, ip_pkt->ip_hdr_len *2));
+		if (IPSend2Output(in_pkt) == EXIT_FAILURE)
+		{
+			return EXIT_FAILURE;
+		}
+		break;
+
+	case FRAGS_ERROR:
+		verbose(2, "[IPProcessForwardingPacket]:: unreachable on packet from %s",
+			IP2Dot(tmpbuf, gNtohl((tmpbuf+20), ip_pkt->ip_src)));
+		ICMPProcessFragNeeded(in_pkt);
+		break;
+
+	case MORE_FRAGS:
+
+		// fragment processing...
+		num_frags = fragmentIPPacket(in_pkt, pkt_frags);
+
+		verbose(2, "[IPProcessForwardingPacket]:: IP packet needs fragmentation");
+		// forward each fragment
+		for (i = 0; i < num_frags; i++)
+		{
+			if (IPSend2Output(pkt_frags[i]) == EXIT_FAILURE)
+			{
+				verbose(2, "[IPProcessForwardingPacket]:: processForwardIPPacket(): Could not forward packets ");
+				return EXIT_FAILURE;
+			}
+		}
+		deallocateFragments(pkt_frags, num_frags);
+		break;
+	default:
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
+
+}
 
 /*
  * process an IP packet destined to someone else...
@@ -143,13 +269,11 @@ int IPProcessBcastPacket(gpacket_t *in_pkt)
  */
 int IPProcessForwardingPacket(gpacket_t *in_pkt)
 {
-	verbose(1, "GUY TEST: 5.0  IPProcessForwardingPacket");
 
 	gpacket_t *pkt_frags[MAX_FRAGMENTS];
 	ip_packet_t *ip_pkt = (ip_packet_t *)in_pkt->data.data;
 	int num_frags, i, need_frag;
 	char tmpbuf[MAX_TMPBUF_LEN];
-	verbose(1, "GUY TEST: 5.1  IPProcessForwardingPacket 2");
 
 	verbose(2, "[IPProcessForwardingPacket]:: checking for any IP errors..");
 	// all the validation and ICMP generation, processing is
@@ -157,7 +281,6 @@ int IPProcessForwardingPacket(gpacket_t *in_pkt)
 
 	if (IPCheck4Errors(in_pkt) == EXIT_FAILURE)
 	{
-		verbose(1, "GUY TEST: 5.2  called IPCheck4Errors failed");
 		return EXIT_FAILURE;
 	}
 
@@ -167,7 +290,6 @@ int IPProcessForwardingPacket(gpacket_t *in_pkt)
 			   in_pkt->frame.nxth_ip_addr,
 			   &(in_pkt->frame.dst_interface)) == EXIT_FAILURE)
 	{
-		verbose(1, "GUY TEST: 5.3  called findRouteEntry failed");
 		return EXIT_FAILURE;
 	}
 
@@ -176,17 +298,14 @@ int IPProcessForwardingPacket(gpacket_t *in_pkt)
 	// redirects but the packet is sent to destination..
 	// TODO: Check the RFC for conformance??
 	IPCheck4Redirection(in_pkt);
-	verbose(1, "GUY TEST: 5.4  called IPCheck4Redirection ");
 
 	// check for fragmentation -- this should return three conditions:
 	// FRAGS_NONE, FRAGS_ERROR, MORE_FRAGS
 	need_frag = IPCheck4Fragmentation(in_pkt);
-	verbose(1, "GUY TEST: 5.5  called IPCheck4Fragmentation ");
 
 	switch (need_frag)
 	{
 	case FRAGS_NONE:
-		verbose(1, "GUY TEST: 5.6 FRAGS_NONE");
 		verbose(2, "[IPProcessForwardingPacket]:: sending packet to GNET..");
 		// compute the checksum before sending out.. the fragmentation routine does this inside it.
 		ip_pkt->ip_cksum = 0;
@@ -199,15 +318,12 @@ int IPProcessForwardingPacket(gpacket_t *in_pkt)
 		break;
 
 	case FRAGS_ERROR:
-		verbose(1, "GUY TEST: 5.7  FRAGS_ERROR ");
 		verbose(2, "[IPProcessForwardingPacket]:: unreachable on packet from %s",
 			IP2Dot(tmpbuf, gNtohl((tmpbuf+20), ip_pkt->ip_src)));
 		ICMPProcessFragNeeded(in_pkt);
 		break;
 
 	case MORE_FRAGS:
-		verbose(1, "GUY TEST: 5.8   MORE_FRAGS ");
-
 		// fragment processing...
 		num_frags = fragmentIPPacket(in_pkt, pkt_frags);
 
@@ -226,24 +342,40 @@ int IPProcessForwardingPacket(gpacket_t *in_pkt)
 	default:
 		return EXIT_FAILURE;
 	}
-	verbose(1, "GUY TEST: 5.9   EXIT_SUCCESS");
 	return EXIT_SUCCESS;
 }
 
-
-int IPCheck4Errors(gpacket_t *in_pkt)
+int IGMPCheck4Errors(gpacket_t *in_pkt)
 {
 	char tmpbuf[MAX_TMPBUF_LEN];
+
 	ip_packet_t *ip_pkt = (ip_packet_t *)in_pkt->data.data;
 
 	// check for valid version and checksum.. silently drop the packet if not.
 	if (IPVerifyPacket(ip_pkt) == EXIT_FAILURE)
+	{
+		verbose(2, "[IGMPCheck4Errors]:: IPVerifyPacket failed for %s",
+		       IP2Dot(tmpbuf, gNtohl((tmpbuf+20), ip_pkt->ip_src)));
 		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int IPCheck4Errors(gpacket_t *in_pkt)
+{
+	char tmpbuf[MAX_TMPBUF_LEN];
+
+	ip_packet_t *ip_pkt = (ip_packet_t *)in_pkt->data.data;
+
+	// check for valid version and checksum.. silently drop the packet if not.
+	if (IPVerifyPacket(ip_pkt) == EXIT_FAILURE)
+	{
+		return EXIT_FAILURE;
+	}
 
 	// Decrement TTL, if TTL <= 0, send to ICMP module with TTL-expired command
 	// return EXIT_FAILURE
-
-	verbose(1, "GUY TEST: ttl is %d", ip_pkt->ip_ttl);
 
 	if (--ip_pkt->ip_ttl <= 0)
 	{

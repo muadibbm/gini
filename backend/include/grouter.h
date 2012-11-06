@@ -67,6 +67,7 @@
 #define MAC_BCAST_ADDR              {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 #define MAC_IGMP_BCAST_ADDR         {0x01, 0x00, 0x5e}
 #define IP_BCAST_ADDR               {0xFF, 0xFF, 0xFF, 0xFF}
+#define IP_MCAST_ADDR               0xE0
 
 // check IP RFC specifications
 

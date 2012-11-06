@@ -79,6 +79,8 @@ List *group_list;
 /* TODO : prototype methods from igmp.c should be inserted here */
 void IGMP_RCV(gpacket_t *in_pkt);
 void IGMPProcessMembershipReport(gpacket_t *in_pkt);
+List *IGMP_GetGroupIPs(gpacket_t *in_pkt);
+
 //void IGMPProcessPacket(gpacket_t *in_pkt);
 //void IGMPSendMReq(uchar *ipaddr, int pkt_size, int retries);
 //void IGMPSendReqPacket(uchar *dst_ip, int size, int seq);

@@ -63,6 +63,8 @@ void IPDeinit();
 void IPIncomingPacket(gpacket_t *in_pkt);
 int IPCheckPacket4Me(gpacket_t *in_pkt);
 int IPProcessBcastPacket(gpacket_t *in_pkt);
+int IPProcessMcastPacket(gpacket_t *in_pkt);
+int IPProcessForwardingPacket(gpacket_t *in_pkt);
 int IPProcessForwardingPacket(gpacket_t *in_pkt);
 int IPCheck4Errors(gpacket_t *in_pkt);
 int IPCheck4Fragmentation(gpacket_t *in_pkt);
