@@ -4,7 +4,8 @@
 
 #include "message.h"
 #include "ip.h"
-
+#include <slack/list.h>
+#include <slack/err.h>
 
 // SO far these are not needed, but they might be later.
 //#include "protocols.h"
@@ -17,9 +18,6 @@
 //#include <string.h>
 //#include <stdint.h>
 //#include <endian.h>
-
-
-
 
 
 /* Global variables, structs and constants */
@@ -53,16 +51,30 @@
 #define IGMP_EXC_FRAGTIME       1       /* Fragment Reass time exceeded */
 
 // IGMP structure definitions go here...
+/*typedef struct _igmphdr_t
+{
+	uchar igmp_version;                   // version
+	uchar igmp_type;                   // type
+	uint8_t igmp_unused:8;
+	ushort igmp_checksum:16;
+} igmphdr_t;
+*/
 typedef struct _igmphdr_t
 {
-	uint8_t igmp_hdr_len:4;                   // header length
-	uint8_t igmp_version:4;                   // version
-	uint8_t igmp_unused:8;
-	uint8_t igmp_checksum:16;
-
+	uchar type;                  /* message type */
+	uchar code;                  /* type sub-code */
+	uchar group;
+	ushort checksum;
 } igmphdr_t;
 
-List *list = list_create(NULL);
+typedef struct igmp_group_list_item
+{
+	uchar groupID[6];
+	List *hosts;                  /* message type */
+} igmp_group_list_item;
+
+
+List *group_list;
 
 /* TODO : prototype methods from igmp.c should be inserted here */
 void IGMP_RCV(gpacket_t *in_pkt);
