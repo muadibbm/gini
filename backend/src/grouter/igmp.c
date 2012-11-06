@@ -1,5 +1,12 @@
 #include "igmp.h"
 
+
+
+
+
+
+
+
 // state information on outstanding ping..
 //pingstat_t pstat;
 
@@ -12,13 +19,13 @@ void IGMP_RCV(gpacket_t *in_pkt) {
 	switch (igmphdr->type)
 	{
 		case IGMP_HOST_MEMBERSHIP_QUERY:
-			verbose(1, "[IGMPProcessPacket]:: IGMP processing for membership query request");
+			verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership query request");
 			//IGMPProcessMembershipQuery(in_pkt);
 			break;
 
 		case IGMP_HOST_MEMBERSHIP_REPORT:
-			verbose(1, "[IGMPProcessPacket]:: IGMP processing for membership report request");
-			//IGMPProcessMembershipReport(in_pkt);
+			verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership report request");
+			IGMPProcessMembershipReport(in_pkt);
 			break;
 	}
 }
@@ -83,34 +90,36 @@ void IGMPProcessMembershipQuery(gpacket_t *in_pkt)
 	// destination IP and size need not be set. they can be obtained from the original packet
 	IPOutgoingPacket(in_pkt, NULL, 0, 0, IGMP_PROTOCOL);
 }
-
-// Report == Client Responce
+*/
+// Report == Client Response
 void IGMPProcessMembershipReport(gpacket_t *in_pkt)
 {
 	ip_packet_t *ipkt = (ip_packet_t *)in_pkt->data.data;
 	int iphdrlen = ipkt->ip_hdr_len *4;
 	igmphdr_t *igmphdr = (igmphdr_t *)((uchar *)ipkt + iphdrlen);
 	uchar *igmppkt_b = (uchar *)igmphdr;
+	list_release_t *destroy;
+	List * list = list_create(list_release_t *destroy);
 
-	struct timeval tv;
-	struct timezone tz;
-	char tmpbuf[MAX_TMPBUF_LEN];
-	double elapsed_time;
+	//struct timeval tv;
+	//struct timezone tz;
+	//char tmpbuf[MAX_TMPBUF_LEN];
+	//double elapsed_time;
 
 	if (igmphdr->type == IGMP_HOST_MEMBERSHIP_REPORT)
 	{
-		pstat.nreceived++;
+		//pstat.nreceived++;
 
-		gettimeofday(&tv, &tz);
-		elapsed_time = subTimeVal(&tv, (struct timeval *)(igmppkt_b + 8));
-		printf("%d bytes from %s: igmp_seq=%d ttl=%d time=%6.3f ms\n",
+		//gettimeofday(&tv, &tz);
+		//elapsed_time = subTimeVal(&tv, (struct timeval *)(igmppkt_b + 8));
+		/*printf("%d bytes from %s: igmp_seq=%d ttl=%d time=%6.3f ms\n",
 		       (ntohs(ipkt->ip_pkt_len) - iphdrlen - 8),
 		       IP2Dot(tmpbuf, gNtohl((tmpbuf + 20), ipkt->ip_src)),
-		       ntohs(igmphdr->un.echo.sequence), ipkt->ip_ttl, elapsed_time);
+		       ntohs(igmphdr->un.echo.sequence), ipkt->ip_ttl, elapsed_time);*/
+
+
 	}
 }
-}
-*/
 
 //function to receive the datagram with IP multicast "1110"
 //function to check the TTL, compare it with the router threshold value; if acceptabe increment the TTL and call forwarding function
