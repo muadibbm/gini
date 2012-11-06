@@ -5,6 +5,8 @@
 #include "message.h"
 #include "ip.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 
 // SO far these are not needed, but they might be later.
 //#include "protocols.h"
@@ -13,13 +15,9 @@
 //#include <slack/err.h>
 //#include <netinet/in.h>
 //#include <sys/time.h>
-//#include <stdio.h>
 //#include <string.h>
 //#include <stdint.h>
 //#include <endian.h>
-
-
-
 
 
 /* Global variables, structs and constants */
@@ -76,6 +74,18 @@ typedef struct _igmphdr_t
 		} frag;                  /* path mtu discovery */
 	} un;
 } igmphdr_t;
+
+// IGMP group list of lists go here...
+typedef struct membership_group {
+   uchar src_ip_addr[4]; //Class D Group address
+   
+   struct host_list {
+		uchar host_ip_addr[4]; //host IP address
+		struct host_list * next;
+   }hosts;
+   
+   struct membership_group * next;
+}groupList;
 
 /* TODO : prototype methods from igmp.c should be inserted here */
 void IGMP_RCV(gpacket_t *in_pkt);
