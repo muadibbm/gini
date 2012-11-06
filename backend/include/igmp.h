@@ -55,27 +55,14 @@
 // IGMP structure definitions go here...
 typedef struct _igmphdr_t
 {
-	uchar type;                  /* message type */
-	uchar code;                  /* type sub-code */
-	uchar group;
-	ushort checksum;
-	union _un
-	{
-		struct
-		{
-			ushort id;
-			ushort sequence;
-		} echo;                  /* echo datagram */
-		
-		uint   gateway;        	 /* gateway address */
-		
-		struct
-		{
-			ushort __unused;
-			ushort mtu;
-		} frag;                  /* path mtu discovery */
-	} un;
+	uint8_t igmp_hdr_len:4;                   // header length
+	uint8_t igmp_version:4;                   // version
+	uint8_t igmp_unused:8;
+	uint8_t igmp_checksum:16;
+
 } igmphdr_t;
+
+List *list = list_create(NULL);
 
 /* TODO : prototype methods from igmp.c should be inserted here */
 void IGMP_RCV(gpacket_t *in_pkt);

@@ -18,15 +18,15 @@ void IGMP_RCV(gpacket_t *in_pkt) {
 
 	switch (igmphdr->type)
 	{
-		case IGMP_HOST_MEMBERSHIP_QUERY:
-			verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership query request");
-			//IGMPProcessMembershipQuery(in_pkt);
-			break;
+	case IGMP_HOST_MEMBERSHIP_QUERY:
+		verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership query request");
+		//IGMPProcessMembershipQuery(in_pkt);
+		break;
 
-		case IGMP_HOST_MEMBERSHIP_REPORT:
-			verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership report request");
-			IGMPProcessMembershipReport(in_pkt);
-			break;
+	case IGMP_HOST_MEMBERSHIP_REPORT:
+		verbose(2, "[IGMPProcessPacket]:: IGMP processing for membership report request");
+		IGMPProcessMembershipReport(in_pkt);
+		break;
 	}
 }
 
@@ -90,7 +90,7 @@ void IGMPProcessMembershipQuery(gpacket_t *in_pkt)
 	// destination IP and size need not be set. they can be obtained from the original packet
 	IPOutgoingPacket(in_pkt, NULL, 0, 0, IGMP_PROTOCOL);
 }
-*/
+ */
 // Report == Client Response
 void IGMPProcessMembershipReport(gpacket_t *in_pkt)
 {
@@ -98,26 +98,25 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt)
 	int iphdrlen = ipkt->ip_hdr_len *4;
 	igmphdr_t *igmphdr = (igmphdr_t *)((uchar *)ipkt + iphdrlen);
 	uchar *igmppkt_b = (uchar *)igmphdr;
-	list_release_t *destroy;
-	List * list = list_create(list_release_t *destroy);
 
-	//struct timeval tv;
-	//struct timezone tz;
-	//char tmpbuf[MAX_TMPBUF_LEN];
-	//double elapsed_time;
+	verbose(2, "[IGMPProcessMembershipReport]::" + in_pkt->data.data);
 
-	if (igmphdr->type == IGMP_HOST_MEMBERSHIP_REPORT)
+	if (list_empty(list))
 	{
-		//pstat.nreceived++;
+		list_append(list, in_pkt);
+		in_pkt->frame.
+	}
+	else
+	{
+		while (list_has_next(list))
+		{
+			ip_packet_t *nextItem = (ip_packet_t *) list_next(list);
 
-		//gettimeofday(&tv, &tz);
-		//elapsed_time = subTimeVal(&tv, (struct timeval *)(igmppkt_b + 8));
-		/*printf("%d bytes from %s: igmp_seq=%d ttl=%d time=%6.3f ms\n",
-		       (ntohs(ipkt->ip_pkt_len) - iphdrlen - 8),
-		       IP2Dot(tmpbuf, gNtohl((tmpbuf + 20), ipkt->ip_src)),
-		       ntohs(igmphdr->un.echo.sequence), ipkt->ip_ttl, elapsed_time);*/
+			if (nextItem->ip_dst == )
+			{
 
-
+			}
+		}
 	}
 }
 
