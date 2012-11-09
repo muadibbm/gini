@@ -82,7 +82,12 @@ void IGMP_RCV(gpacket_t *in_pkt) {
 }
 
 // Happens the first time you create a graft message. this message will be forwarded by other routers.
-void IGMPCreateGraft(uchar new_group[4]) {
+void IGMPCreateGraft(ip_packet_t *in_pkt) {
+
+	uchar new_group [4];
+
+	COPY_IP(new_group, in_pkt->ip_dst);
+
 	verbose(1, "GUY TEST: create Graft of: %d %d %d %d ", new_group[0],
 			new_group[1], new_group[2], new_group[3]);
 
@@ -94,7 +99,8 @@ void IGMPCreateGraft(uchar new_group[4]) {
 // Setup IGMP packet headers
 	igmphdr_t *igmphdr = (igmphdr_t *) ((uchar *) ipkt + ipkt->ip_hdr_len * 4);
 	igmphdr->type = IGMP_DVMRP_GRAFT;
-	igmphdr->unused = ipkt->ip_src[2];
+	igmphdr->unused = in_pkt->ip_src[2];
+	verbose (1,"GUY TEST 123: ipkt->ip_src[2]   %d ", ipkt->ip_src[2]);
 
 	COPY_IP( igmphdr->group, new_group);
 
@@ -127,7 +133,7 @@ void IGMPProcessAndForwardGraft(gpacket_t *in_pkt) {
 
 		// If the packet matches the group.
 		// Have Group?
-		if (COMPARE_IP(nextItem->multicastIP, ipkt->ip_dst) == 0) {
+		if (COMPARE_IP(nextItem->multicastIP, igmphdr->group) == 0) {
 			// We use Ununsed to store the subnet (since 192.168.x.0 we have three constant values)
 			if (nextItem->source_subnet == igmphdr->unused) {
 				verbose(1, "GUY TEST: GRAFT TABLE FOUND");
@@ -140,7 +146,7 @@ void IGMPProcessAndForwardGraft(gpacket_t *in_pkt) {
 		verbose(1, "GUY TEST: GRAFT TABLE ADDING");
 		dvmrp_pair_table_item *newTableEntry = (dvmrp_pair_table_item *) malloc(
 				sizeof(dvmrp_pair_table_item));
-		COPY_IP(newTableEntry->multicastIP, ipkt->ip_dst);
+		COPY_IP(newTableEntry->multicastIP, igmphdr->group);
 
 		//get the subnet
 		newTableEntry->source_subnet = igmphdr->unused;
@@ -219,7 +225,7 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt) {
 				newGroup->groupIP[0], newGroup->groupIP[1],
 				newGroup->groupIP[2], newGroup->groupIP[3]);
 
-		IGMPCreateGraft(ipkt->ip_dst);
+		IGMPCreateGraft(ipkt);
 	}
 
 }
@@ -242,10 +248,13 @@ List * IGMPGetGroupSubnets(gpacket_t *in_pkt) {
 			dvmrp_pair_table_item *nextItem =
 					(dvmrp_pair_table_item *) list_next(dvmrp_pair_table);
 
+			verbose(1, "GUY TEST 3.3 1:  %d %d %d %d", nextItem->multicastIP[0], nextItem->multicastIP[1], nextItem->multicastIP[2], nextItem->multicastIP[3]);
+			verbose(1, "GUY TEST 3.3 2:  %d %d %d %d", ipkt->ip_dst[0], ipkt->ip_dst[1], ipkt->ip_dst[2], ipkt->ip_dst[3]);
+
 			// If the packet matches the group.
 			// Have Group?
 			if (COMPARE_IP(nextItem->multicastIP, ipkt->ip_dst) == 0) {
-				verbose(1, "GUY TEST: Found a group to forward to");
+				verbose(1, "GUY TEST: Found a group to forward to:  nextItem->source_subnet:  %d", nextItem->source_subnet);
 				found_group_in_table = 1;
 				list_append_int(outlist, nextItem->source_subnet);
 

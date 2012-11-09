@@ -113,7 +113,7 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 	char tmpbuf[MAX_TMPBUF_LEN];
 
 	// Checks to make sure we arent in the range 224.0.0.0 and 224.0.0.255
-	// This is a reserved range.
+	// This is a reserved range .
 	if (ip_pkt->ip_dst[0] == 224 && ip_pkt->ip_dst[1] == 0
 			&& ip_pkt->ip_dst[2] == 0) {
 		verbose(2, "[IPProcessMcastPacket]  Can't send to a reserved space.");
@@ -129,9 +129,11 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 	int forward_interface = IGMP_GetGroupInterfaces(in_pkt);
 	if (forward_interface != -1) {
 
-		in_pkt->frame.dst_interface = forward_interface;
+		gpacket_t *out_pkt = (gpacket_t *) malloc(sizeof(gpacket_t));
+		memcpy(out_pkt, in_pkt, sizeof(*in_pkt));
+		out_pkt ->frame.dst_interface = forward_interface;
 
-		if (IPSend2Output(in_pkt) == EXIT_FAILURE) {
+		if (IPSend2Output(out_pkt ) == EXIT_FAILURE) {
 			return EXIT_FAILURE;
 		}
 
@@ -143,11 +145,13 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 	// Forward to routers
 
 	// look through the pair table. Get the subnets that we care about
+	verbose(1,"[GUY TEST -1.0]: IGMPGetGroupSubnets");
 	List *subnetList = IGMPGetGroupSubnets(in_pkt);
 
 	List *hopList = list_create(NULL);
 
 	// find those subnets in our route table and remove duplicates
+
 
 	// send to all neighbours by trying all entries in the router.
 	if (subnetList != NULL) {
@@ -160,7 +164,7 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 				if (route_tbl[interface].is_empty == 0) {
 
 					// check the subnet to see if this one is the entry.
-					if (route_tbl[interface].network[2] == nextItem) {
+					if (route_tbl[interface].network[1] == nextItem) {
 
 						// figure out if we already added the hop.
 						int found = 0;
@@ -189,21 +193,36 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 		int nextItem3 = (int) list_next(hopList);
 
 		int forward_interface = nextItem3;
+
 		if (forward_interface != -1) {
 
-			in_pkt->frame.dst_interface = forward_interface;
+			gpacket_t *out_pkt = (gpacket_t *) malloc(sizeof(gpacket_t));
+			memcpy(out_pkt, in_pkt, sizeof(*in_pkt));
 
-			if (IPSend2Output(in_pkt) == EXIT_FAILURE) {
+
+			COPY_IP(out_pkt->frame.nxth_ip_addr,route_tbl[forward_interface].nexthop);
+			verbose(1,"[GUY TEST 2.3] ntxhp ip %d %d %d %d ", out_pkt->frame.nxth_ip_addr[0],out_pkt->frame.nxth_ip_addr[1],out_pkt->frame.nxth_ip_addr[2],out_pkt->frame.nxth_ip_addr[3]);
+			out_pkt->frame.dst_interface = forward_interface;
+			ip_packet_t *out_ip_pkt = (ip_packet_t *) out_pkt->data.data;
+
+			verbose(1,"[GUY TEST 2.3] dst ip is  %d %d %d %d ", out_ip_pkt->ip_dst[0],out_ip_pkt->ip_dst[1],out_ip_pkt->ip_dst[2],out_ip_pkt->ip_dst[3]);
+			verbose(1,"[GUY TEST 2.3] src ip is  %d %d %d %d ", out_ip_pkt->ip_src[0],out_ip_pkt->ip_src[1],out_ip_pkt->ip_src[2],out_ip_pkt->ip_src[3]);
+
+			if (IPSend2Output(out_pkt) == EXIT_FAILURE) {
+				verbose(1,"[GUY TEST 2.3]");
 				return EXIT_FAILURE;
 			}
+			verbose(1,"[GUY TEST 2.3.1]");
 
 		} else {
+			verbose(1,"[GUY TEST 2.4]");
 			verbose(2,
 					"[IPProcessMcastPacket]: We don't have anyone in that group");
 		}
 
 	}
 
+	verbose(1,"[GUY TEST 2.5]");
 	//send to the next hop.
 
 	return EXIT_SUCCESS;
@@ -750,13 +769,10 @@ int IPOutgoingPacketChecksumAndSend(gpacket_t *pkt, uchar *dst_ip, int size,
 	ip_packet_t *ip_pkt = (ip_packet_t *) pkt->data.data;
 	ushort cksum;
 // compute the new checksum
-	verbose(1, "GUY TEST: IPOutgoingPacket 5");
 	cksum = checksum((uchar *) ip_pkt, ip_pkt->ip_hdr_len * 2);
 	ip_pkt->ip_cksum = htons(cksum);
 	pkt->data.header.prot = htons(IP_PROTOCOL);
-	verbose(1, "GUY TEST: IPOutgoingPacket 6");
 	IPSend2Output(pkt);
-	verbose(1, "GUY TEST: IPOutgoingPacket 7");
 	verbose(2, "[IPOutgoingPacket]:: IP packet sent to output queue.. ");
 	return EXIT_SUCCESS;
 }
@@ -795,16 +811,20 @@ int IGMPOutgoingPacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag,
  */
 int IPSend2Output(gpacket_t *pkt) {
 	int vlevel;
+	verbose(1, "GUY TEST 2output  0");
 
 	if (pkt == NULL) {
 		verbose(1, "[IPSend2Output]:: NULL pointer error... nothing sent");
 		return EXIT_FAILURE;
 	}
 
+	verbose(1, "GUY TEST 2output  1");
 	vlevel = prog_verbosity_level();
+	verbose(1, "GUY TEST 2output  2");
 	if (vlevel >= 3)
 		printGPacket(pkt, vlevel, "IP_ROUTINE");
 
+	verbose(1, "GUY TEST 2output 3");
 	return writeQueue(pcore->outputQ, (void *) pkt, sizeof(gpacket_t));
 }
 

@@ -75,7 +75,7 @@ typedef struct _igmphdr_t
 	uchar group[4];
 } igmphdr_t;
 
-typedef struct igmp_group_list_item
+typedef struct _igmp_group_list_item
 {
 	uchar groupMAC[6];
 	uchar groupIP[4];
@@ -84,7 +84,7 @@ typedef struct igmp_group_list_item
 	int time_left_to_respond;
 } igmp_group_list_item;
 
-typedef struct dvmrp_pair_table_item
+typedef struct _dvmrp_pair_table_item
 {
 	int source_subnet;
 	uchar multicastIP[4];
@@ -105,7 +105,7 @@ void time_out(void);
 void set_timer(int interval);
 void check_group_resposes();
 void IGMPProcessMembershipReport(gpacket_t *in_pkt);
-void IGMPCreateGraft(uchar new_group[4]);
+void IGMPCreateGraft(ip_packet_t *in_pkt);
 List * IGMPGetGroupSubnets(gpacket_t *in_pkt);
 
 
