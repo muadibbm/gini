@@ -29,6 +29,13 @@
 
 #define IGMP_HOST_MEMBERSHIP_QUERY   17
 #define IGMP_HOST_MEMBERSHIP_REPORT  18
+#define IGMP_DVMRP_MESSAGE			19
+
+#define IGMP_DVMRP_PROBE   1
+#define IGMP_DVMRP_REPORT  2
+#define IGMP_DVMRP_PRUNE   7
+#define IGMP_DVMRP_GRAFT   8
+#define IGMP_DVMRP_GRAFT_ACK   9
 
 /* Codes for UNREACH. */
 #define IGMP_NET_UNREACH        0       /* Network Unreachable          */
