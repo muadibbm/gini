@@ -70,19 +70,29 @@ typedef struct _igmphdr_t
 {
 	uchar type;                  /* message type */
 	uchar code;                  /* type sub-code */
-	uchar group;
+	uchar group[4];
 	ushort checksum;
 } igmphdr_t;
 
 typedef struct igmp_group_list_item
 {
-	uchar groupID[6];
+	uchar groupMAC[6];
+	uchar groupIP[6];
 //	List *hosts;                  /* message type */
 	int interface;
+	int time_left_to_respond;
 } igmp_group_list_item;
+
+typedef struct dvmrp_pair_table_item
+{
+	uchar source_subnet[6];
+	uchar multicastIP[4];
+} dvmrp_pair_table_item;
 
 
 List *group_list;
+List *dvmrp_pair_table;
+
 
 /* TODO : prototype methods from igmp.c should be inserted here */
 void IGMP_RCV(gpacket_t *in_pkt);
@@ -90,6 +100,12 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt);
 List *IGMP_GetGroupIPs(gpacket_t *in_pkt);
 List * IGMP_GetGroupList();
 int IGMP_GetGroupInterfaces(gpacket_t *in_pkt);
+void time_out(void);
+void set_timer(int interval);
+void check_group_resposes();
+void IGMPProcessMembershipReport(gpacket_t *in_pkt);
+void IGMPSendGraft(uchar new_group[4]);
+
 
 //void IGMPProcessPacket(gpacket_t *in_pkt);
 //void IGMPSendMReq(uchar *ipaddr, int pkt_size, int retries);

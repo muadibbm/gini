@@ -498,7 +498,7 @@ int IPPreparePacket(gpacket_t *pkt, uchar *dst_ip, int size, int newflag, int sr
 	int status;
 	ip_pkt->ip_ttl = 64;                        // set TTL to default value
 	ip_pkt->ip_cksum = 0;                       // reset the checksum field
-	ip_pkt->ip_prot = src_prot;  // set the protocol field
+	ip_pkt->ip_prot = IGMP_PROTOCOL;  // set the protocol field
 	if (newflag == 0)
 	{
 		COPY_IP(ip_pkt->ip_dst, ip_pkt->ip_src); 		    // set dst to original src
