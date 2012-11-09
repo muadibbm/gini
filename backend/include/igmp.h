@@ -31,6 +31,7 @@
 #define IGMP_HOST_MEMBERSHIP_REPORT  18
 #define IGMP_DVMRP_MESSAGE			19
 
+// Ad hoc protocol types.
 #define IGMP_DVMRP_PROBE   1
 #define IGMP_DVMRP_REPORT  2
 #define IGMP_DVMRP_PRUNE   7
@@ -69,15 +70,15 @@
 typedef struct _igmphdr_t
 {
 	uchar type;                  /* message type */
-	uchar code;                  /* type sub-code */
-	uchar group[4];
+	uchar unused;
 	ushort checksum;
+	uchar group[4];
 } igmphdr_t;
 
 typedef struct igmp_group_list_item
 {
 	uchar groupMAC[6];
-	uchar groupIP[6];
+	uchar groupIP[4];
 //	List *hosts;                  /* message type */
 	int interface;
 	int time_left_to_respond;
@@ -85,7 +86,7 @@ typedef struct igmp_group_list_item
 
 typedef struct dvmrp_pair_table_item
 {
-	uchar source_subnet[6];
+	int source_subnet;
 	uchar multicastIP[4];
 } dvmrp_pair_table_item;
 
@@ -104,7 +105,7 @@ void time_out(void);
 void set_timer(int interval);
 void check_group_resposes();
 void IGMPProcessMembershipReport(gpacket_t *in_pkt);
-void IGMPSendGraft(uchar new_group[4]);
+void IGMPCreateGraft(uchar new_group[4]);
 
 
 //void IGMPProcessPacket(gpacket_t *in_pkt);
