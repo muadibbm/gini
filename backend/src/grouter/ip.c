@@ -66,6 +66,7 @@ void IPIncomingPacket(gpacket_t *in_pkt)
 			// Is packet IGMP? send it to the IGMP module
 			// further processing with appropriate type code
 			IGMP_RCV(in_pkt);
+
 	} else if (((((int)ip_pkt->ip_dst[0])>>4) << 4)  ==  mcast_ip){
 		//If the IP starts with 1110 we have a multicast IP. NOTE: this must be after IGMP check since they have the same IP range.
 		IPProcessMcastPacket(in_pkt);
@@ -128,30 +129,32 @@ int IPProcessMcastPacket(gpacket_t *in_pkt)
 //	TODO: checkMultiCastPacket for errors etc;
 
 
-	// Send a packet to each host in the group
-	List *host_list = IGMP_GetGroupIPs(in_pkt);
-	if (host_list != NULL)
-	{
-		// Do we have the packet.
-		while (list_has_next(host_list)) {
-			gpacket_t *nextHostItem = (gpacket_t *) list_next(host_list);
+	// TODO: send to other routers as well.
+	int forward_interface = IGMP_GetGroupInterfaces(in_pkt_copy);
+	if(forward_interface != -1){
+//			gpacket_t *nextHostItem = (gpacket_t *) list_next(host_list);
+//			gpacket_t *in_pkt_copy = (gpacket_t *) malloc(sizeof(gpacket_t ));
+//			memcpy(in_pkt_copy, in_pkt, sizeof(*in_pkt));
+//			ip_packet_t *ip_pkt_copy = (ip_packet_t *)in_pkt_copy->data.data;
+	//		ip_packet_t *nextHost_ip_pkt = (ip_packet_t *)nextHostItem->data.data;
 
-			gpacket_t *in_pkt_copy = (gpacket_t *) malloc(sizeof(gpacket_t ));
-			memcpy(in_pkt_copy, in_pkt, sizeof(*in_pkt));
+//			ip_pkt_copy->ip_cksum = 0;
+	//		ip_pkt_copy->ip_cksum = htons(checksum((uchar *)ip_pkt, ip_pkt->ip_hdr_len *2));
 
-			ip_packet_t *ip_pkt_copy = (ip_packet_t *)in_pkt_copy->data.data;
-			ip_packet_t *nextHost_ip_pkt = (ip_packet_t *)nextHostItem->data.data;
-
-			memcpy(in_pkt_copy->data.header.dst, nextHostItem->data.header.src, sizeof(nextHostItem->data.header.src));
-			memcpy(ip_pkt_copy->ip_dst, nextHost_ip_pkt->ip_src, sizeof(nextHost_ip_pkt->ip_src));
+//			in_pkt_copy->frame.dst_interface = 1;
+			in_pkt->frame.dst_interface = forward_interface;
+			//			if (IPSend2Output(in_pkt_copy) == EXIT_FAILURE)
+			if (IPSend2Output(in_pkt) == EXIT_FAILURE)
+			{
+				return EXIT_FAILURE;
+			}
 
 			// TODO: figure out this checksum.
 //			ip_pkt_copy.ip_cksum = 0;
 	//		ip_pkt_copy.ip_cksum = htons(checksum((uchar *)ip_pkt, ip_pkt_copy->ip_hdr_len *2));
 
 			// Forward this modified packet, it acts similar to a normal packet.
-			ProcessForwardingMulticastPacket(in_pkt_copy);
-		}
+//			ProcessForwardingMulticastPacket(in_pkt_copy);
 	}
 	else
 	{
