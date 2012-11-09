@@ -77,7 +77,8 @@ typedef struct _igmphdr_t
 typedef struct igmp_group_list_item
 {
 	uchar groupID[6];
-	List *hosts;                  /* message type */
+//	List *hosts;                  /* message type */
+	int interface;
 } igmp_group_list_item;
 
 
@@ -87,6 +88,8 @@ List *group_list;
 void IGMP_RCV(gpacket_t *in_pkt);
 void IGMPProcessMembershipReport(gpacket_t *in_pkt);
 List *IGMP_GetGroupIPs(gpacket_t *in_pkt);
+List * IGMP_GetGroupList();
+int IGMP_GetGroupInterfaces(gpacket_t *in_pkt);
 
 //void IGMPProcessPacket(gpacket_t *in_pkt);
 //void IGMPSendMReq(uchar *ipaddr, int pkt_size, int retries);

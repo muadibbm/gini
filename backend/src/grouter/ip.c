@@ -130,7 +130,7 @@ int IPProcessMcastPacket(gpacket_t *in_pkt)
 
 
 	// TODO: send to other routers as well.
-	int forward_interface = IGMP_GetGroupInterfaces(in_pkt_copy);
+	int forward_interface = IGMP_GetGroupInterfaces(in_pkt);
 	if(forward_interface != -1){
 //			gpacket_t *nextHostItem = (gpacket_t *) list_next(host_list);
 //			gpacket_t *in_pkt_copy = (gpacket_t *) malloc(sizeof(gpacket_t ));
