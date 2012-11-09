@@ -62,6 +62,7 @@ void IGMP_RCV(gpacket_t *in_pkt) {
 	case IGMP_HOST_MEMBERSHIP_REPORT:
 		verbose(2,
 				"[IGMPProcessPacket]:: IGMP processing for membership report request");
+
 		set_timer(TIMER_INTERVAL);
 		IGMPProcessMembershipReport(in_pkt);
 		break;
@@ -119,7 +120,7 @@ void IGMPProcessAndForwardGraft(gpacket_t *in_pkt) {
 	}
 
 // Go through all the groups, and try to find the packet's group.
-	int found_group_in_table = 0;// 1 if found a group, 0 if we didn't find one
+	int found_group_in_table = 0; // 1 if found a group, 0 if we didn't find one
 	while (list_has_next(dvmrp_pair_table)) {
 		dvmrp_pair_table_item *nextItem = (dvmrp_pair_table_item *) list_next(
 				dvmrp_pair_table);
@@ -221,5 +222,39 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt) {
 		IGMPCreateGraft(ipkt->ip_dst);
 	}
 
+}
+
+List * IGMPGetGroupSubnets(gpacket_t *in_pkt) {
+
+	List * outlist = list_create(NULL);
+
+	ip_packet_t *ipkt = (ip_packet_t *) in_pkt->data.data;
+
+	int iphdrlen = ipkt->ip_hdr_len * 4;
+	igmphdr_t *igmphdr = (igmphdr_t *) ((uchar *) ipkt + iphdrlen);
+	uchar *igmppkt_b = (uchar *) igmphdr;
+
+	// make sure table exists
+	if (dvmrp_pair_table != NULL) {
+		// Go through all the groups, and try to find the packet's group.
+		int found_group_in_table = 0;// 1 if found a group, 0 if we didn't find one
+		while (list_has_next(dvmrp_pair_table)) {
+			dvmrp_pair_table_item *nextItem =
+					(dvmrp_pair_table_item *) list_next(dvmrp_pair_table);
+
+			// If the packet matches the group.
+			// Have Group?
+			if (COMPARE_IP(nextItem->multicastIP, ipkt->ip_dst) == 0) {
+				verbose(1, "GUY TEST: Found a group to forward to");
+				found_group_in_table = 1;
+				list_append_int(outlist, nextItem->source_subnet);
+
+			}
+		}
+	}
+
+
+
+	return outlist;
 }
 

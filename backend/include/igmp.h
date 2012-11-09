@@ -106,6 +106,7 @@ void set_timer(int interval);
 void check_group_resposes();
 void IGMPProcessMembershipReport(gpacket_t *in_pkt);
 void IGMPCreateGraft(uchar new_group[4]);
+List * IGMPGetGroupSubnets(gpacket_t *in_pkt);
 
 
 //void IGMPProcessPacket(gpacket_t *in_pkt);
