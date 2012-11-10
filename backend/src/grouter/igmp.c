@@ -172,7 +172,7 @@ int IGMP_GetGroupInterfaces(gpacket_t *in_pkt) {
 
 			// If the packet matches the group copy the list
 			if (COMPARE_IP(nextItem->groupIP, ipkt->ip_dst) == 0) {
-				return nextItem->interface;
+				return nextItem->interfaces;
 			}
 		}
 	}
@@ -210,6 +210,31 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt) {
 			//reset time to respond
 			verbose(1, "Resettig respomse time");
 			nextItem->time_left_to_respond = 3;
+
+
+			// make sure the hosts list exist
+			if (nextItem->interfaces == NULL)
+			{
+				nextItem->interfaces = list_create(NULL);
+			}
+
+			// Do we have the packet.
+			int found_interface = 0;
+			while (list_has_next(nextItem->interfaces)) {
+				int *nextInterfaceItem = (int) list_next(nextItem->interfaces);
+
+				// If the MAC source matches, we have the same host.
+				if (nextInterfaceItem == in_pkt->frame.src_interface)
+				{
+					found_interface = 1;
+				}
+			}
+			if (found_interface == 0)
+			{
+				list_append(nextItem->interfaces, in_pkt->frame.src_interface);
+			}
+
+
 		}
 	}
 
@@ -218,7 +243,10 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt) {
 				sizeof(igmp_group_list_item));
 		COPY_IP(newGroup->groupIP, ipkt->ip_dst);
 
-		newGroup->interface = in_pkt->frame.src_interface;
+		verbose(1, "add to group_list");
+
+		newGroup->interfaces = in_pkt->frame.src_interface;
+		verbose(1, "with frame.src_interface %d" , in_pkt->frame.src_interface);
 		newGroup->time_left_to_respond = 3;
 		list_append(group_list, newGroup);
 		verbose(1, "GUY TEST: added new group to the list: %d %d %d %d ",
@@ -226,6 +254,10 @@ void IGMPProcessMembershipReport(gpacket_t *in_pkt) {
 				newGroup->groupIP[2], newGroup->groupIP[3]);
 
 		IGMPCreateGraft(ipkt);
+	}
+	else
+	{
+		verbose(1, "GUY TEST: already have this");
 	}
 
 }

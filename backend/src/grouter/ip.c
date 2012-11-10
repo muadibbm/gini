@@ -126,9 +126,10 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 	// TODO: send to other routers as well.
 
 	// Forward to hosts
+	verbose(1, "GUY TEST FORWARD HOSTS");
 	int forward_interface = IGMP_GetGroupInterfaces(in_pkt);
 	if (forward_interface != -1) {
-
+		verbose(1, "GUY TEST interface forward");
 		gpacket_t *out_pkt = (gpacket_t *) malloc(sizeof(gpacket_t));
 		memcpy(out_pkt, in_pkt, sizeof(*in_pkt));
 		out_pkt ->frame.dst_interface = forward_interface;
@@ -139,11 +140,12 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 
 	} else {
 		verbose(2,
-				"[IPProcessMcastPacket]: We don't have anyone in that group");
+				"[IPProcessMcastPacket]: We don't have hosts in that group");
 	}
 
 	// Forward to routers
 
+	verbose(1, "GUY TEST FORWARD ROUTERS");
 	// look through the pair table. Get the subnets that we care about
 	verbose(1,"[GUY TEST -1.0]: IGMPGetGroupSubnets");
 	List *subnetList = IGMPGetGroupSubnets(in_pkt);
@@ -159,32 +161,31 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 		while (list_has_next(subnetList)) {
 			int nextItem = (int) list_next(subnetList);
 
-			int interface = 0;
-			while (interface < MAX_ROUTES) {
-				if (route_tbl[interface].is_empty == 0) {
+			int index_t = 0;
+			while (index_t < MAX_ROUTES) {
+				if (route_tbl[index_t].is_empty == 0) {
 
 					// check the subnet to see if this one is the entry.
-					if (route_tbl[interface].network[1] == nextItem) {
+					if (route_tbl[index_t].network[1] == nextItem) {
 
 						// figure out if we already added the hop.
 						int found = 0;
 						while (list_has_next(hopList)) {
 							int nextItem2 = (int) list_next(hopList);
 
-							if (route_tbl[interface].interface == nextItem2) {
+							if (index_t == nextItem2) {
 								found = 1;
 							}
 
 						}
 
 						if (found == 0) {
-							list_append_int(hopList,
-									route_tbl[interface].interface);
+							list_append_int(hopList, index_t);
 						}
 					}
 				}
 
-				interface++;
+				index_t++;
 			}
 		}
 	}
@@ -192,17 +193,17 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 	while (list_has_next(hopList)) {
 		int nextItem3 = (int) list_next(hopList);
 
-		int forward_interface = nextItem3;
+		int forward_index = nextItem3;
 
-		if (forward_interface != -1) {
+		if (forward_index != -1) {
 
 			gpacket_t *out_pkt = (gpacket_t *) malloc(sizeof(gpacket_t));
 			memcpy(out_pkt, in_pkt, sizeof(*in_pkt));
 
-
-			COPY_IP(out_pkt->frame.nxth_ip_addr,route_tbl[forward_interface].nexthop);
+			COPY_IP(out_pkt->frame.nxth_ip_addr,route_tbl[forward_index].nexthop);
 			verbose(1,"[GUY TEST 2.3] ntxhp ip %d %d %d %d ", out_pkt->frame.nxth_ip_addr[0],out_pkt->frame.nxth_ip_addr[1],out_pkt->frame.nxth_ip_addr[2],out_pkt->frame.nxth_ip_addr[3]);
-			out_pkt->frame.dst_interface = forward_interface;
+			out_pkt->frame.dst_interface = route_tbl[forward_index].interface;
+
 			ip_packet_t *out_ip_pkt = (ip_packet_t *) out_pkt->data.data;
 
 			verbose(1,"[GUY TEST 2.3] dst ip is  %d %d %d %d ", out_ip_pkt->ip_dst[0],out_ip_pkt->ip_dst[1],out_ip_pkt->ip_dst[2],out_ip_pkt->ip_dst[3]);
@@ -217,14 +218,13 @@ int IPProcessMcastPacket(gpacket_t *in_pkt) {
 		} else {
 			verbose(1,"[GUY TEST 2.4]");
 			verbose(2,
-					"[IPProcessMcastPacket]: We don't have anyone in that group");
+					"[IPProcessMcastPacket]: We don't have routers in that group");
 		}
 
 	}
 
 	verbose(1,"[GUY TEST 2.5]");
 	//send to the next hop.
-
 	return EXIT_SUCCESS;
 }
 

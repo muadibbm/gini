@@ -80,7 +80,7 @@ typedef struct _igmp_group_list_item
 	uchar groupMAC[6];
 	uchar groupIP[4];
 //	List *hosts;                  /* message type */
-	int interface;
+	List *interfaces;
 	int time_left_to_respond;
 } igmp_group_list_item;
 
